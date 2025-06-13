@@ -1,0 +1,119 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import os
+from tqdm import tqdm
+
+def scrape_cvpr_papers():
+    """
+    Scrapes paper details from the CVPR 2024 Open Access website.
+
+    This function performs a two-step scrape:
+    1. It scrapes the main page to get the title, authors, PDF link,
+       and supplementary material link for each paper.
+    2. It then visits each paper's individual page to get the abstract.
+    Finally, it saves all the data into a CSV file.
+    """
+    # Base URL for constructing absolute links
+    base_url = "https://openaccess.thecvf.com"
+    main_page_url = f"{base_url}/CVPR2024?day=all"
+    
+    print(f"Scraping main page: {main_page_url}")
+
+    all_papers_data = []
+
+    try:
+        # --- Step A: Main Page Scraping ---
+        response = requests.get(main_page_url)
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Find all paper title entries, which serve as anchors for each paper's data
+        paper_titles = soup.find_all('dt', class_='ptitle')
+        
+        print(f"Found {len(paper_titles)} papers on the main page. Starting data extraction...")
+
+        # Use tqdm for a progress bar
+        for ptitle_tag in tqdm(paper_titles, desc="Scraping Papers"):
+            paper_info = {}
+
+            # 1. Extract Paper Title and Link to Individual Paper Page
+            title_a_tag = ptitle_tag.find('a')
+            if not title_a_tag:
+                continue # Skip if the title tag is malformed
+            
+            paper_info['title'] = title_a_tag.text.strip()
+            individual_page_link = base_url + title_a_tag['href']
+
+            # --- Step B: Individual Paper Page Scraping for Abstract ---
+            try:
+                paper_page_response = requests.get(individual_page_link)
+                paper_page_response.raise_for_status()
+                paper_soup = BeautifulSoup(paper_page_response.content, 'html.parser')
+                
+                # 2. Extract Abstract
+                abstract_div = paper_soup.find('div', id='abstract')
+                paper_info['abstract'] = abstract_div.text.strip() if abstract_div else 'N/A'
+
+            except requests.exceptions.RequestException as e:
+                print(f"\nCould not fetch paper page {individual_page_link}: {e}")
+                paper_info['abstract'] = 'Error fetching abstract'
+                
+
+            # Continue extracting from the main page listing
+            dd_tags = ptitle_tag.find_next_siblings('dd')
+            
+            # 3. Extract Authors
+            # The authors are in the first <dd> tag following the <dt>
+            if len(dd_tags) > 0:
+                author_tags = dd_tags[0].find_all('a')
+                authors = [author.text.strip() for author in author_tags]
+                paper_info['authors'] = ', '.join(authors)
+            else:
+                paper_info['authors'] = 'N/A'
+
+            # 4. Extract PDF and Supplementary Links
+            # These links are in the second <dd> tag
+            paper_info['pdf_link'] = 'N/A'
+            paper_info['supplementary_link'] = 'N/A'
+            if len(dd_tags) > 1:
+                links_dd = dd_tags[1]
+                
+                # Find PDF link
+                pdf_a_tag = links_dd.find('a', string='pdf')
+                if pdf_a_tag and pdf_a_tag.has_attr('href'):
+                    paper_info['pdf_link'] = base_url + pdf_a_tag['href']
+
+                # Find Supplementary link
+                supp_a_tag = links_dd.find('a', string='supp')
+                if supp_a_tag and supp_a_tag.has_attr('href'):
+                    paper_info['supplementary_link'] = base_url + supp_a_tag['href']
+
+            all_papers_data.append(paper_info)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching the main page: {e}")
+        return
+
+    if not all_papers_data:
+        print("No data was scraped. Exiting.")
+        return
+        
+    # --- Final Output: Create DataFrame and save to CSV ---
+    print("\nScraping complete. Converting data to DataFrame...")
+    df = pd.DataFrame(all_papers_data)
+    
+    # Reorder columns as per requirements
+    df = df[['title', 'authors', 'abstract', 'pdf_link', 'supplementary_link']]
+
+    output_filename = 'cvpr2024_papers.csv'
+    try:
+        df.to_csv(output_filename, index=False, encoding='utf-8')
+        print(f"Successfully saved data to {os.path.abspath(output_filename)}")
+    except IOError as e:
+        print(f"Error saving file: {e}")
+
+
+if __name__ == '__main__':
+    scrape_cvpr_papers()
