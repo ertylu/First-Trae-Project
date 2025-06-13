@@ -1,0 +1,9 @@
+javascript:(function(){
+    const url = new URL(window.location.href);
+    const query = url.searchParams.get('q');
+    if (query) {
+        window.location.href = 'https://duckduckgo.com/?q=' + encodeURIComponent(query);
+    } else {
+        alert('No search query found in the URL!');
+    }
+})();
