@@ -1,0 +1,135 @@
+# Instagram Image Scraper (Network Capture Method)
+#
+# This script uses an advanced Selenium feature to capture network traffic.
+# It finds image URLs by inspecting the browser's network requests directly,
+# which is more reliable than scraping the HTML.
+
+import os
+import time
+import requests
+import json
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+# --- Configuration ---
+TARGET_URL = "https://www.instagram.com/grapeot/"
+DOWNLOAD_DIRECTORY = "instagram_downloads"
+SCROLL_PAUSE_TIME = 2
+# --- !! IMPORTANT !! ---
+# UPDATE THIS PATH to your Chrome profile directory.
+# Find the exact path by visiting chrome://version in your browser.
+CHROME_PROFILE_PATH = r"C:\Users\ertyl\AppData\Local\Google\Chrome\User Data\Default"
+
+
+def setup_driver():
+    """Initializes a Selenium WebDriver with network logging enabled."""
+    
+    placeholder = "PASTE_YOUR_CHROME_PROFILE_PATH_HERE"
+    # Make sure the user has updated the path from the placeholder.
+    if placeholder in CHROME_PROFILE_PATH:
+        print("Error: Please update the CHROME_PROFILE_PATH variable in the script.")
+        print(r"It should look like this: CHROME_PROFILE_PATH = r'C:\Users\YourUser\...'")
+        return None
+
+    options = Options()
+    # This argument tells Chrome to use your existing user profile.
+    options.add_argument(f"user-data-dir={CHROME_PROFILE_PATH}")
+    
+    # These settings enable the performance log so we can capture network traffic.
+    options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+    
+    try:
+        driver = webdriver.Chrome(options=options)
+    except Exception as e:
+        print("Error: WebDriver not found or failed to start. Please check your setup.")
+        print(f"Details: {e}")
+        return None
+    return driver
+
+def scroll_to_bottom(driver):
+    """Scrolls down the page to trigger all network requests for images."""
+    print("Scrolling to the bottom of the page to load all images...")
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(SCROLL_PAUSE_TIME)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            print("Reached the bottom of the page.")
+            break
+        last_height = new_height
+
+def extract_urls_from_network_log(driver):
+    """Extracts image URLs directly from the browser's network logs."""
+    print("Extracting image URLs from network log...")
+    log_entries = driver.get_log('performance')
+    
+    image_urls = set()
+    for entry in log_entries:
+        log = json.loads(entry['message'])['message']
+        if log['method'] == 'Network.requestWillBeSent':
+            url = log['params']['request']['url']
+            
+            # --- UPDATED LOGIC ---
+            # We check the part of the URL *before* any query parameters (?)
+            # to see if it ends with an image extension. This is more reliable.
+            url_before_query = url.split('?')[0]
+            if 'scontent' in url and url_before_query.endswith(('.jpg', '.webp', '.png')):
+                image_urls.add(url)
+                
+    print(f"Found {len(image_urls)} unique image URLs.")
+    return image_urls
+
+def download_images(image_urls, directory):
+    """Downloads images from a list of URLs into a specified directory."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    print(f"Starting download of {len(image_urls)} images into '{directory}' folder...")
+    
+    for i, url in enumerate(image_urls):
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status() 
+
+            file_extension = url.split('?')[0].split('.')[-1]
+            filename = os.path.join(directory, f"image_{i+1}.{file_extension}")
+            
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+            
+            print(f"({i+1}/{len(image_urls)}) Successfully downloaded {filename}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Could not download image {i+1} from {url}. Reason: {e}")
+        except Exception as e:
+            print(f"An error occurred while downloading image {i+1}: {e}")
+
+def main():
+    """Main function to run the scraper."""
+    driver = setup_driver()
+    if not driver:
+        return
+
+    driver.get(TARGET_URL)
+    
+    # --- LOGIN DELAY ---
+    login_wait_time = 0
+    print(f"\nBrowser opened. You have {login_wait_time} seconds to manually log in if needed.")
+    print("The script will continue automatically after the countdown.")
+    time.sleep(login_wait_time)
+    print("Countdown finished. Resuming script...")
+    
+    scroll_to_bottom(driver)
+    urls = extract_urls_from_network_log(driver)
+    driver.quit()
+    
+    if urls:
+        download_images(urls, DOWNLOAD_DIRECTORY)
+        print("\nAll tasks complete.")
+    else:
+        print("\nNo image URLs were found. The script will now exit.")
+
+if __name__ == "__main__":
+    main()
