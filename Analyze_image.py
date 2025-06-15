@@ -17,7 +17,7 @@ PROMPT = "Describe this image in detail. What objects do you see? What is happen
 # NOTE: You do not need to provide your own API key if running this in the
 # provided learning environment. However, if you run this on your own
 # machine, you will need to get a key from Google AI Studio and place it here.
-API_KEY = "AIzaSyCVLaUtypYU0kopm_IaAcyD5ZutFON4c2Q" # Leave blank if in the learning environment.
+API_KEY = "" # Leave blank if in the learning environment.
 
 
 def analyze_image(image_path):
