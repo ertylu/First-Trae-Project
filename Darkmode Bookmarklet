@@ -1,12 +1,27 @@
-javascript:(function(){
-    var css = 'html { -webkit-filter: invert(85%) hue-rotate(180deg) brightness(1.1) contrast(0.9); }';
+javascript:(function() {
+    /* Give our style element a unique ID */
+    var styleId = 'dark-mode-toggle-style';
+    var existingStyle = document.getElementById(styleId);
+
+    /* If the style already exists, remove it and stop */
+    if (existingStyle) {
+        existingStyle.remove();
+        return;
+    }
+
+    /* Otherwise, create and add the style */
+    var css = 'html { -webkit-filter: invert(85%) hue-rotate(180deg) brightness(1.1) contrast(0.9) !important; }';
+    
     var head = document.getElementsByTagName('head')[0];
     var style = document.createElement('style');
+    style.id = styleId; /* Set the ID here */
     style.type = 'text/css';
-    if (style.styleSheet){
+    
+    if (style.styleSheet) {
         style.styleSheet.cssText = css;
     } else {
         style.appendChild(document.createTextNode(css));
     }
+    
     head.appendChild(style);
 })();
