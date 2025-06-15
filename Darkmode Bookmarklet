@@ -1,27 +1,48 @@
-javascript:(function() {
-    /* Give our style element a unique ID */
-    var styleId = 'dark-mode-toggle-style';
-    var existingStyle = document.getElementById(styleId);
+javascript:(function(){var id='smart-dark-mode-universal';var el=document.getElementById(id);if(el){el.remove();return;}var css=`
+        /* Base and Background */
+        :root, body, .bg-white, .bg-gray-100, .bg-gray-50 {
+            background-color: #1a1a1a !important;
+            color: #e8e8e8 !important;
+        }
+        div, section, header, footer, main, nav, article, aside {
+            background-color: transparent !important;
+        }
 
-    /* If the style already exists, remove it and stop */
-    if (existingStyle) {
-        existingStyle.remove();
-        return;
-    }
+        /* Readability & Typography Improvements */
+        .text-gray-900, .text-gray-800, .text-gray-700, .text-black, h1, h2, h3, h4, p, li, span, .ProseMirror, .p2-tall {
+            color: #e8e8e8 !important;
+            line-height: 1.7 !important; /* Increased line spacing */
+            letter-spacing: 0.2px !important; /* Added letter spacing */
+        }
+        h1, h2, h3, h4 {
+            letter-spacing: 0.3px !important; /* Slightly more spacing for headers */
+        }
+        .text-gray-600, .text-gray-500 {
+            color: #a0a0a0 !important; /* Softer secondary text color */
+        }
 
-    /* Otherwise, create and add the style */
-    var css = 'html { -webkit-filter: invert(85%) hue-rotate(180deg) brightness(1.1) contrast(0.9) !important; }';
-    
-    var head = document.getElementsByTagName('head')[0];
-    var style = document.createElement('style');
-    style.id = styleId; /* Set the ID here */
-    style.type = 'text/css';
-    
-    if (style.styleSheet) {
-        style.styleSheet.cssText = css;
-    } else {
-        style.appendChild(document.createTextNode(css));
-    }
-    
-    head.appendChild(style);
-})();
+        /* Links and Borders */
+        a {
+            color: #8ab4f8 !important;
+        }
+        *, .border, .border-b, .border-t, .border-l, .border-r, .divide-y > :not([hidden]) ~ :not([hidden]) {
+            border-color: #404040 !important;
+        }
+        .border-black\\/5, .border-transparent {
+            border-color: #404040 !important;
+        }
+
+        /* SVGs and Form Elements */
+        svg path[fill="#0D0D0C"], svg path[stroke="#0D0D0C"] {
+            fill: #e1e1e1 !important;
+            stroke: #e1e1e1 !important;
+        }
+        svg path[fill="#62D990"], svg path[stroke="#62D990"] {
+            fill: #5ab882 !important;
+            stroke: #5ab882 !important;
+        }
+        button, input[type="checkbox"] {
+            background-color: #2c2c2c !important;
+            color: #e1e1e1 !important;
+        }
+    `;var style=document.createElement('style');style.id=id;style.type='text/css';if(style.styleSheet){style.styleSheet.cssText=css;}else{style.appendChild(document.createTextNode(css));}document.head.appendChild(style);})();
